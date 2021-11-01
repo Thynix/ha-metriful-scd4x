@@ -114,6 +114,15 @@ void loop() {
   uint16_t dataReady;
   int ret;
 
+  // Ensure WiFi is still connected.
+  while (WiFi.status() != WL_CONNECTED) {
+    digitalWrite(LED_BUILTIN, HIGH);
+    Serial.println("Reconnecting to WiFi");
+    WiFi.begin(SSID, password);
+    delay(1000);
+  }
+  digitalWrite(LED_BUILTIN, LOW);
+
   // Wait for the next SCD4x data release.
   ret = scd4x.getDataReadyStatus(dataReady);
   if (ret) {
@@ -140,8 +149,6 @@ void loop() {
     return;
   }
   ready_assertion_event = false;
-
-  // TODO: Check for need to reconnect to WiFi
 
   /* Read data from the MS430 into the data structs. 
   For each category of data (air, sound, etc.) a pointer to the data struct is 
