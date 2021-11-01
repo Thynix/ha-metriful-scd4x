@@ -107,7 +107,7 @@ typedef struct {
 void SensorHardwareSetup(uint8_t i2c_7bit_address);
 void ISR_ATTRIBUTE ready_ISR(void);
 
-bool TransmitI2C(uint8_t dev_addr_7bit, uint8_t commandRegister, uint8_t data[], uint8_t data_length);
+bool TransmitI2C(uint8_t dev_addr_7bit, uint8_t commandRegister, const uint8_t data[], uint8_t data_length);
 bool ReceiveI2C(uint8_t dev_addr_7bit, uint8_t commandRegister, uint8_t data[], uint8_t data_length);
 
 const char * interpret_AQI_accuracy(uint8_t AQI_accuracy_code);

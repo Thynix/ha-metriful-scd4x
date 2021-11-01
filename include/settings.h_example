@@ -2,11 +2,11 @@
 // USER-EDITABLE SETTINGS
 
 // How often to read and report the data (every 3, 100 or 300 seconds)
-uint8_t cycle_period = CYCLE_PERIOD_100_S;
+const uint8_t cycle_period = CYCLE_PERIOD_100_S;
 
 // The details of the WiFi network:
-char SSID[] = "PUT WIFI NETWORK NAME HERE IN QUOTES"; // network SSID (name)
-char password[] = "PUT WIFI PASSWORD HERE IN QUOTES"; // network password
+const char *const SSID = "PUT WIFI NETWORK NAME HERE IN QUOTES"; // network SSID (name)
+const char *const password = "PUT WIFI PASSWORD HERE IN QUOTES"; // network password
 
 // Home Assistant settings
 

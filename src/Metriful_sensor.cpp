@@ -12,6 +12,7 @@
 
 #include "Metriful_sensor.h"
 #include "host_pin_definitions.h"
+#include "settings.h"
 
 // The Arduino Wire library has a limited internal buffer size:
 #define ARDUINO_WIRE_BUFFER_LIMIT_BYTES 32
@@ -340,7 +341,7 @@ void printParticleData(const ParticleData_t * particleData, bool printColumns, u
 // data = array containing the data to be sent; its length must be at least "data_length" bytes.
 // data_length = the number of bytes from the "data" array to be sent. 
 //
-bool TransmitI2C(uint8_t dev_addr_7bit, uint8_t commandRegister, uint8_t data[], uint8_t data_length) {
+bool TransmitI2C(uint8_t dev_addr_7bit, uint8_t commandRegister, const uint8_t data[], uint8_t data_length) {
 
   if (data_length > ARDUINO_WIRE_BUFFER_LIMIT_BYTES) {
     // The Arduino Wire library has a limited internal buffer size
