@@ -31,6 +31,7 @@ HA_Attributes_t CO2 =            {"CO2 concentration", "carbon_dioxide", "ppm", 
 #endif
 
 WiFiClient client;
+SensirionI2CScd4x scd4x;
 
 char postBuffer[2048] = {};
 char fieldBuffer[1024] = {};
@@ -41,7 +42,7 @@ LightData_t lightData = {};
 ParticleData_t particleData = {};
 SoundData_t soundData = {};
 
-int status = WL_IDLE_STATUS;
+int status = {};
 
 void sendNumericData(const HA_Attributes_t *, uint32_t, uint8_t, bool);
 void sendTextData(const HA_Attributes_t *, const char *);
@@ -49,7 +50,7 @@ void http_POST_Home_Assistant(const HA_Attributes_t *, const char *);
 void printWiFiStatus();
 
 void setup() {
-  //Configure pins for Adafruit ATWINC1500 Feather
+  // Configure pins for Adafruit ATWINC1500 Feather
   WiFi.setPins(8, 7, 4, 2);
 
   // Initialize the host pins, set up the serial port and reset:
@@ -64,17 +65,17 @@ void setup() {
   }
   digitalWrite(LED_BUILTIN, LOW);
 
-  // attempt to connect to WiFi network:
+  // Connect to WiFi
+  status = WL_IDLE_STATUS;
   while (status != WL_CONNECTED) {
     Serial.print("Connecting to SSID: ");
     Serial.println(SSID);
-    // Connect to WPA/WPA2 network.
+
     status = WiFi.begin(SSID, password);
 
-    // wait 10 seconds for connection:
-    delay(10000);
+    delay(1000);
   }
-  Serial.println("Connected to wifi");
+  Serial.println("Connected to WiFi");
   printWiFiStatus();
 
   // Apply settings to the MS430 and enter cycle mode
@@ -83,12 +84,69 @@ void setup() {
   TransmitI2C(I2C_ADDRESS, CYCLE_TIME_PERIOD_REG, &cycle_period, 1);
   ready_assertion_event = false;
   TransmitI2C(I2C_ADDRESS, CYCLE_MODE_CMD, 0, 0);
+
+  uint16_t error;
+  char errorMessage[256];
+
+  scd4x.begin(Wire);
+
+  // stop potentially previously started measurement
+  error = scd4x.stopPeriodicMeasurement();
+  if (error) {
+      Serial.print("stopPeriodicMeasurement() failed: ");
+      errorToString(error, errorMessage, 256);
+      Serial.println(errorMessage);
+  }
+
+  uint16_t serial0;
+  uint16_t serial1;
+  uint16_t serial2;
+  error = scd4x.getSerialNumber(serial0, serial1, serial2);
+  if (error) {
+      Serial.print("getSerialNumber() failed: ");
+      errorToString(error, errorMessage, 256);
+      Serial.println(errorMessage);
+  } else {
+    Serial.printf("SCD4x serial number: 0x%04x%04x%04x\r\n", serial0, serial1, serial2);
+  }
+
+  // Start Measurement
+  error = scd4x.startPeriodicMeasurement();
+  if (error) {
+      Serial.print("startPeriodicMeasurement() failed: ");
+      errorToString(error, errorMessage, 256);
+      Serial.println(errorMessage);
+  }
 }
 
 void loop() {
-  // Wait for the next new data release, indicated by a falling edge on READY
-  while (!ready_assertion_event) {
+  uint16_t dataReady;
+  int ret;
+
+  // Wait for the next SCD4x data release.
+  ret = scd4x.getDataReadyStatus(dataReady);
+  if (ret) {
+    Serial.printf("Failed to check if SCD4x has data ready: %d\r\n", ret);
+  } else if (dataReady & 0x7ff) {
+    // Data is ready. From datasheet:
+    // > If the least significant 11 bits of
+    // > word[0] are 0 → data not ready 
+    // > else → data ready for read-out
+    uint16_t co2;
+    float temperature;
+    float humidity;
+    ret = scd4x.readMeasurement(co2, temperature, humidity);
+    if (ret) {
+      Serial.printf("Failed to read SCD4x measurement: %d\r\n", ret);
+    } else {
+      sendNumericData(&CO2, co2, 0, true);
+    }
+  }
+
+  // Wait for the next Metriful data release.
+  if (!ready_assertion_event) {
     yield();
+    return;
   }
   ready_assertion_event = false;
 
@@ -132,6 +190,9 @@ void loop() {
   bool isPositive = true;
   getTemperature(&airData, &T_intPart, &T_fractionalPart, &isPositive);
   
+  // Update pressure used by SCD4x.
+  scd4x.setAmbientPressure(roundf(airData.P_Pa / 100.0));
+
   // Send data to Home Assistant
   sendNumericData(&temperature, (uint32_t) T_intPart, T_fractionalPart, isPositive);
   sendNumericData(&pressure, (uint32_t) roundf(airData.P_Pa / 100.0), 0, true);
@@ -213,25 +274,27 @@ void http_POST_Home_Assistant(const HA_Attributes_t * attributes, const char * v
     client.println();
     client.print(postBuffer);
 
-    // Dump any response bytes to serial
+    // Handle expected entity update codes and dump anything else.
     String responseCode = client.readStringUntil('\n');
     if (responseCode.startsWith("HTTP/1.1 2")) {
       if (responseCode.startsWith("HTTP/1.1 200")) {
         Serial.print("Updated state of ");
         Serial.println(attributes->name);
-      } else if (responseCode.equals("HTTP/1.1 201")) {
+        return;
+      } else if (responseCode.startsWith("HTTP/1.1 201")) {
         Serial.println("Created new entity for ");
         Serial.println(attributes->name);
+        return;
       }
+
+      Serial.println("Undocumented successful response:");
     } else {
-      Serial.print("Got error response: ");
-      Serial.println(responseCode);
-      Serial.println(client.readStringUntil('\n'));
+      Serial.println("Error response: ");
     }
 
+    Serial.println(responseCode);
     while (client.available()) {
-      char c = client.read();
-      Serial.write(c);
+      Serial.write(client.read());
     }
   }
   else {
