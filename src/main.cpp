@@ -56,15 +56,6 @@ void setup() {
   // Initialize the host pins, set up the serial port and reset:
   SensorHardwareSetup(I2C_ADDRESS); 
 
-  while (!Serial)
-  {
-    digitalWrite(LED_BUILTIN, LOW);
-    delay(500);
-    digitalWrite(LED_BUILTIN, HIGH);
-    delay(500);
-  }
-  digitalWrite(LED_BUILTIN, LOW);
-
   // Connect to WiFi
   status = WL_IDLE_STATUS;
   while (status != WL_CONNECTED) {
