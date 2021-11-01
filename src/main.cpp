@@ -56,6 +56,8 @@ void setup() {
   // Initialize the host pins, set up the serial port and reset:
   SensorHardwareSetup(I2C_ADDRESS); 
 
+  Serial.println("Reporting environment data for " SENSOR_NAME);
+
   // Connect to WiFi
   status = WL_IDLE_STATUS;
   while (status != WL_CONNECTED) {
@@ -64,7 +66,18 @@ void setup() {
 
     status = WiFi.begin(SSID, password);
 
-    delay(1000);
+    int statusChecks = 0;
+    while ((status != WL_CONNECTED) && (statusChecks < 8)) {
+      delay(1000);
+      Serial.print(".");
+      status = WiFi.status();
+      statusChecks++;
+    }
+    if (status != WL_CONNECTED) {
+      Serial.println("Failed.");
+      WiFi.disconnect();
+      delay(5000);
+    }
   }
   Serial.println("Connected to WiFi");
   printWiFiStatus();
