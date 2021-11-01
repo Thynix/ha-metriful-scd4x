@@ -44,45 +44,19 @@ LightData_t lightData = {};
 ParticleData_t particleData = {};
 SoundData_t soundData = {};
 
-int status = {};
-
 void sendNumericData(const HA_Attributes_t *, uint32_t, uint8_t, bool);
 void sendTextData(const HA_Attributes_t *, const char *);
 void http_POST_Home_Assistant(const HA_Attributes_t *, const char *);
 void printWiFiStatus();
+void connectToWiFi();
 
 void setup() {
-  // Configure pins for Adafruit ATWINC1500 Feather
-  WiFi.setPins(8, 7, 4, 2);
-
   // Initialize the host pins, set up the serial port and reset:
   SensorHardwareSetup(I2C_ADDRESS); 
 
   Serial.println("Reporting environment data for " SENSOR_NAME);
 
-  // Connect to WiFi
-  status = WL_IDLE_STATUS;
-  while (status != WL_CONNECTED) {
-    Serial.print("Connecting to SSID: ");
-    Serial.println(SSID);
-
-    status = WiFi.begin(SSID, password);
-
-    int statusChecks = 0;
-    while ((status != WL_CONNECTED) && (statusChecks < 8)) {
-      delay(1000);
-      Serial.print(".");
-      status = WiFi.status();
-      statusChecks++;
-    }
-    if (status != WL_CONNECTED) {
-      Serial.println("Failed.");
-      WiFi.disconnect();
-      delay(5000);
-    }
-  }
-  Serial.println("Connected to WiFi");
-  printWiFiStatus();
+  connectToWiFi();
 
   // Apply settings to the MS430 and enter cycle mode
   uint8_t particleSensorCode = PARTICLE_SENSOR;
@@ -130,13 +104,7 @@ void loop() {
   int ret;
 
   // Ensure WiFi is still connected.
-  while (WiFi.status() != WL_CONNECTED) {
-    digitalWrite(LED_BUILTIN, HIGH);
-    Serial.println("Reconnecting to WiFi");
-    WiFi.begin(SSID, password);
-    delay(1000);
-  }
-  digitalWrite(LED_BUILTIN, LOW);
+  connectToWiFi();
 
   // Wait for the next SCD4x data release.
   ret = scd4x.getDataReadyStatus(dataReady);
@@ -313,6 +281,41 @@ void http_POST_Home_Assistant(const HA_Attributes_t * attributes, const char * v
   else {
     Serial.printf("Client connection failed: %d\n", ret);
   }
+}
+
+void connectToWiFi() {
+  wl_status_t status = WiFi.begin(SSID, password);
+  if (status == WL_CONNECTED) return;
+
+  // Keep LED on while trying to connect.
+  digitalWrite(LED_BUILTIN, HIGH);
+  while (status != WL_CONNECTED) {
+    Serial.printf("Connecting to SSID: %s", SSID);
+
+    status = WiFi.begin(SSID, password);
+
+    for (int statusChecks = 0; (status != WL_CONNECTED) && (statusChecks < 8); statusChecks++) {
+      delay(1000);
+      Serial.print(".");
+      status = WiFi.status();
+    }
+
+    if (status != WL_CONNECTED) {
+      Serial.println(" Failed.");
+      if (status == WL_WRONG_PASSWORD) {
+        Serial.println(" Wrong password.");
+      } else {
+        Serial.println();
+      }
+
+      WiFi.disconnect();
+      delay(5000);
+    }
+  }
+
+  Serial.println(" Connected.");
+  printWiFiStatus();
+  digitalWrite(LED_BUILTIN, LOW);
 }
 
 void printWiFiStatus() {
