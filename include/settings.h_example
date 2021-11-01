@@ -1,0 +1,28 @@
+//////////////////////////////////////////////////////////
+// USER-EDITABLE SETTINGS
+
+// How often to read and report the data (every 3, 100 or 300 seconds)
+uint8_t cycle_period = CYCLE_PERIOD_100_S;
+
+// The details of the WiFi network:
+char SSID[] = "PUT WIFI NETWORK NAME HERE IN QUOTES"; // network SSID (name)
+char password[] = "PUT WIFI PASSWORD HERE IN QUOTES"; // network password
+
+// Home Assistant settings
+
+// You must have already installed Home Assistant on a computer on your 
+// network. Go to www.home-assistant.io for help on this.
+
+// Choose a unique name for this MS430 sensor board so you can identify it.
+// Variables in HA will have names like: SENSOR_NAME.temperature, etc.
+#define SENSOR_NAME "kitchen3"
+
+// Change this to the IP address of the computer running Home Assistant. 
+// You can find this from the admin interface of your router.
+#define HOME_ASSISTANT_IP "192.168.43.144"
+
+// Security access token: the Readme and User Guide explain how to get this
+#define LONG_LIVED_ACCESS_TOKEN "PASTE YOUR TOKEN HERE WITHIN QUOTES"
+
+// END OF USER-EDITABLE SETTINGS
+//////////////////////////////////////////////////////////
