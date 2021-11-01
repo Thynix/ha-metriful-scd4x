@@ -1,9 +1,11 @@
 #include <Arduino.h>
-#include <WiFi101.h>
 #include <Metriful_sensor.h>
 #include <SensirionI2CScd4x.h>
 #include <Wire.h>
 #include "settings.h"
+#ifndef ESP8266
+#include <WiFi101.h>
+#endif
 
 // Define the display attributes of data sent to Home Assistant. 
 // The chosen name, unit and icon will appear in on the overview 
