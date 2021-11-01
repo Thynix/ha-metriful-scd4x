@@ -24,27 +24,6 @@
 #include "sensor_constants.h"
 #include "host_pin_definitions.h"
 
-////////////////////////////////////////////////////////////////////////
-
-// Choose to display output temperatures in Fahrenheit:
-// un-comment the following line to use Fahrenheit
-#define USE_FAHRENHEIT
-
-// Specify which particle sensor is connected:
-#define PARTICLE_SENSOR PARTICLE_SENSOR_PPD42
-// Define PARTICLE_SENSOR as:
-//    PARTICLE_SENSOR_PPD42    for the Shinyei PPD42
-//    PARTICLE_SENSOR_SDS011   for the Nova SDS011
-//    PARTICLE_SENSOR_OFF      if no sensor is connected
-
-// The I2C address of the MS430 board. 
-#define I2C_ADDRESS I2C_ADDR_7BIT_SB_OPEN
-// The default is I2C_ADDR_7BIT_SB_OPEN and must be changed to 
-// I2C_ADDR_7BIT_SB_CLOSED if the solder bridge SB1 on the board 
-// is soldered closed
-
-////////////////////////////////////////////////////////////////////////
-
 #define I2C_CLK_FREQ_HZ 100000
 #define SERIAL_BAUD_RATE 9600
 
