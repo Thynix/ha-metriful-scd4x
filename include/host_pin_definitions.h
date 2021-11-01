@@ -207,6 +207,8 @@
   //#error ("Your development board is not directly supported")
   // Please make a new section in this file to define the correct input/output pins
   // TODO: What is the #define for board #define for Adafruit Feather M0 Wifi? It uses a SAMD21G18, but that's not #defined...
+  #include <WiFi101.h>
+  
   #define HAS_WIFI
   #define ISR_ATTRIBUTE
 

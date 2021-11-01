@@ -3,9 +3,6 @@
 #include <SensirionI2CScd4x.h>
 #include <Wire.h>
 #include "settings.h"
-#ifndef ESP8266
-#include <WiFi101.h>
-#endif
 
 // Define the display attributes of data sent to Home Assistant. 
 // The chosen name, unit and icon will appear in on the overview 
@@ -20,7 +17,7 @@ HA_Attributes_t soundLevel =     {"Sound level", "None", "dBA", "microphone", 1}
 HA_Attributes_t peakAmplitude =  {"Sound peak", "None", "mPa", "waveform", 2};
 HA_Attributes_t AQI =            {"Air Quality Index", "aqi", "", "thought-bubble-outline", 1};
 HA_Attributes_t AQ_assessment =  {"Air quality assessment", "None", "", "flower-tulip", 0};
-HA_Attributes_t CO2 =            {"CO2 concentration", "carbon_dioxide", "ppm", "periodic-table-co2", 0};
+HA_Attributes_t CO2 =            {"CO2 concentration", "carbon_dioxide", "ppm", "molecule-co2", 0};
 #if (PARTICLE_SENSOR == PARTICLE_SENSOR_PPD42)
   HA_Attributes_t particulates = {"Particle concentration", "pm10", "ppL", "chart-bubble", 0};
 #else
@@ -51,6 +48,11 @@ void printWiFiStatus();
 void connectToWiFi();
 
 void setup() {
+#ifndef ESP8266
+  // Configure pins for Adafruit ATWINC1500 Feather
+  WiFi.setPins(8, 7, 4, 2);
+#endif
+
   // Initialize the host pins, set up the serial port and reset:
   SensorHardwareSetup(I2C_ADDRESS); 
 
@@ -284,7 +286,7 @@ void http_POST_Home_Assistant(const HA_Attributes_t * attributes, const char * v
 }
 
 void connectToWiFi() {
-  wl_status_t status = WiFi.begin(SSID, password);
+  int status = WiFi.status();
   if (status == WL_CONNECTED) return;
 
   // Keep LED on while trying to connect.
@@ -302,12 +304,6 @@ void connectToWiFi() {
 
     if (status != WL_CONNECTED) {
       Serial.println(" Failed.");
-      if (status == WL_WRONG_PASSWORD) {
-        Serial.println(" Wrong password.");
-      } else {
-        Serial.println();
-      }
-
       WiFi.disconnect();
       delay(5000);
     }
