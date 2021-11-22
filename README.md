@@ -3,7 +3,7 @@
 This reports temperature, air pressure, humidity, illumination, sound level,
 and CO2 concentration to Home Assistant over WiFi.
 
-This repo is a [https://platformio.org/](PlatformIO) project.
+This repo is a [PlatformIO](https://platformio.org/) project.
 
 ## Hardware
 
