@@ -153,8 +153,8 @@
   #define HAS_WIFI
   #define ISR_ATTRIBUTE ICACHE_RAM_ATTR
 
-  #define SDA_PIN 5     // GPIO5  (labeled D1) connects to SDA
-  #define SCL_PIN 4     // GPIO4  (labeled D2) connects to SCL
+  #define SDA_PIN 4
+  #define SCL_PIN 5
   #define READY_PIN 12  // GPIO12 (labeled D6) connects to RDY
   #define L_INT_PIN 0   // GPIO0  (labeled D3) connects to LIT
   #define S_INT_PIN 14  // GPIO14 (labeled D5) connects to SIT

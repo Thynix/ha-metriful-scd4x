@@ -1,8 +1,8 @@
 {
 	"folders": [
 		{
-			"name": "wifi-test",
-			"path": "."
+			"name": "wifi-led",
+			"path": "..\\wifi-led"
 		}
 	],
 	"settings": {}

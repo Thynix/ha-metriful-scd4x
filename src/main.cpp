@@ -2,6 +2,10 @@
 #include <Metriful_sensor.h>
 #include <SensirionI2CScd4x.h>
 #include <Wire.h>
+#include <SPI.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <Bounce2.h>
 #include "settings.h"
 
 // Define the display attributes of data sent to Home Assistant. 
@@ -31,6 +35,14 @@ HA_Attributes_t CO2 =            {"CO2 concentration", "carbon_dioxide", "ppm", 
 
 WiFiClient client;
 SensirionI2CScd4x scd4x;
+Adafruit_SSD1306 display;
+
+enum DisplayTab {
+  None,
+  Connectivity,
+  Metriful,
+  SCD40,
+};
 
 char postBuffer[2048] = {};
 char fieldBuffer[1024] = {};
@@ -41,20 +53,50 @@ LightData_t lightData = {};
 ParticleData_t particleData = {};
 SoundData_t soundData = {};
 
-void sendNumericData(const HA_Attributes_t *, uint32_t, uint8_t, bool);
-void sendTextData(const HA_Attributes_t *, const char *);
-void http_POST_Home_Assistant(const HA_Attributes_t *, const char *);
+long lastSCD40;
+long lastMetriful;
+
+Bounce2::Button connectivityButton;
+Bounce2::Button metrifulButton;
+Bounce2::Button scd40Button;
+
+DisplayTab tab = Connectivity;
+
+int sendNumericData(const HA_Attributes_t *, uint32_t, uint8_t, bool);
+int sendTextData(const HA_Attributes_t *, const char *);
+int http_POST_Home_Assistant(const HA_Attributes_t *, const char *);
 void printWiFiStatus();
 void connectToWiFi();
+void updateSCD40();
+void updateMetriful();
+void updateDisplay();
 
-void setup() {
+void setup()
+{
 #ifndef ESP8266
   // Configure pins for Adafruit ATWINC1500 Feather
   WiFi.setPins(8, 7, 4, 2);
 #endif
 
+  connectivityButton.attach(A1, INPUT_PULLUP);
+  connectivityButton.setPressedState(LOW);
+
+  metrifulButton.attach(A2, INPUT_PULLUP);
+  metrifulButton.setPressedState(LOW);
+
+  scd40Button.attach(A3, INPUT_PULLUP);
+  scd40Button.setPressedState(LOW);
+
   // Initialize the host pins, set up the serial port and reset:
   SensorHardwareSetup(I2C_ADDRESS); 
+
+  pinMode(LED_BUILTIN, OUTPUT);
+  while (!Serial) {
+    delay(100);
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(100);
+    digitalWrite(LED_BUILTIN, LOW);
+  }
 
   Serial.println("Reporting environment data for " SENSOR_NAME);
 
@@ -72,14 +114,6 @@ void setup() {
 
   scd4x.begin(Wire);
 
-  // stop potentially previously started measurement
-  error = scd4x.stopPeriodicMeasurement();
-  if (error) {
-      Serial.print("stopPeriodicMeasurement() failed: ");
-      errorToString(error, errorMessage, 256);
-      Serial.println(errorMessage);
-  }
-
   uint16_t serial0;
   uint16_t serial1;
   uint16_t serial2;
@@ -92,6 +126,14 @@ void setup() {
     Serial.printf("SCD4x serial number: 0x%04x%04x%04x\r\n", serial0, serial1, serial2);
   }
 
+  // stop potentially previously started measurement
+  error = scd4x.stopPeriodicMeasurement();
+  if (error) {
+      Serial.print("stopPeriodicMeasurement() failed: ");
+      errorToString(error, errorMessage, 256);
+      Serial.println(errorMessage);
+  }
+
   // Start Measurement
   error = scd4x.startPeriodicMeasurement();
   if (error) {
@@ -99,20 +141,40 @@ void setup() {
       errorToString(error, errorMessage, 256);
       Serial.println(errorMessage);
   }
+
+  display = Adafruit_SSD1306(128, 32, &Wire);
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.clearDisplay();
 }
 
-void loop() {
+void loop()
+{
+  // Ensure WiFi is still connected.
+  connectToWiFi();
+
+  updateSCD40();
+  updateMetriful();
+  updateDisplay();
+}
+
+void updateSCD40()
+{
+  static long lastUpdate = millis();
+  char errorMessage[256];
   uint16_t dataReady;
   int ret;
 
-  // Ensure WiFi is still connected.
-  connectToWiFi();
+  long now = millis();
+  if (max(now, lastUpdate) - min(now, lastUpdate) < 10) return;
 
   // Wait for the next SCD4x data release.
   ret = scd4x.getDataReadyStatus(dataReady);
   if (ret) {
-    Serial.printf("Failed to check if SCD4x has data ready: %d\r\n", ret);
-  } else if ((dataReady & (1 << 11) - 1) != 0) {
+    errorToString(ret, errorMessage, sizeof(errorMessage));
+    Serial.printf("Failed to check if SCD4x has data ready: %s\r\n", errorMessage);
+  } else if ((dataReady & ((1 << 11) - 1)) != 0) {
     // Data is ready. From datasheet:
     // > If the least significant 11 bits of
     // > word[0] are 0 → data not ready 
@@ -122,12 +184,18 @@ void loop() {
     float humidity;
     ret = scd4x.readMeasurement(co2, temperature, humidity);
     if (ret) {
-      Serial.printf("Failed to read SCD4x measurement: %d\r\n", ret);
+      errorToString(ret, errorMessage, sizeof(errorMessage));
+      Serial.printf("Failed to read SCD4x measurement: %s\r\n", errorMessage);
     } else {
-      sendNumericData(&CO2, co2, 0, true);
+      if (!sendNumericData(&CO2, co2, 0, true)) {
+        lastSCD40 = millis();
+      }
     }
   }
+}
 
+void updateMetriful()
+{
   // Wait for the next Metriful data release.
   if (!ready_assertion_event) {
     yield();
@@ -190,12 +258,100 @@ void loop() {
                     particleData.concentration_fr_2dp, true);
   }
   sendTextData(&AQ_assessment, interpret_AQI_value(airQualityData.AQI_int));
+
+  lastMetriful = millis();
+}
+
+void updateDisplay()
+{
+  static long lastUpdate = millis();
+  static bool blank = false;
+
+  connectivityButton.update();
+  metrifulButton.update();
+  scd40Button.update();
+
+  DisplayTab previousTab = tab;
+
+  // Use a placeholder value to check whether any button was pressed this update.
+  tab = None;
+
+  if (connectivityButton.pressed()) tab = Connectivity;
+  if (metrifulButton.pressed()) tab = Metriful;
+  if (scd40Button.pressed()) tab = SCD40;
+
+  if (tab == None) tab = previousTab;
+  else if (tab != previousTab) {
+    blank = false;
+    Serial.printf("Display tab changed to %d\r\n", tab);
+  } else {
+    // Active tab button was pressed this update. Blank screen.
+    blank = true;
+  }
+
+  long now = millis();
+  if (max(now, lastUpdate) - min(now, lastUpdate) < 10) return;
+  lastUpdate = now;
+
+  display.clearDisplay();
+
+  if (blank) {
+    display.display();
+    return;
+  }
+
+  switch (tab) {
+  case Connectivity: {
+    int status = WiFi.status();
+
+    display.setCursor(2, 0);
+    display.print(SSID);
+
+    if (status != WL_CONNECTED) {
+      display.setCursor(2, 8);
+      display.print("not connected");
+    } else {
+      display.setCursor(2, 8);
+      display.print("connected");
+
+      display.setCursor(2, 16);
+      display.print(IPAddress(WiFi.localIP()));
+
+      display.setCursor(2, 24);
+      display.printf("%ld dBm", WiFi.RSSI());
+    }
+    break;
+  }
+  case Metriful:
+    display.setCursor(2, 0);
+    display.print("Metriful updated");
+
+    display.setCursor(2, 8);
+    display.print((now - lastMetriful) / 1000);
+
+    display.setCursor(2, 16);
+    display.print("secs ago");
+    break;
+  case SCD40:
+    display.setCursor(2, 0);
+    display.println("CO2 updated");
+
+    display.setCursor(2, 8);
+    display.println((now - lastSCD40) / 1000);
+
+    display.setCursor(2, 16);
+    display.print("secs ago");
+    break;
+  }
+
+  display.display();
 }
 
 // Send numeric data with specified sign, integer and fractional parts
-void sendNumericData(const HA_Attributes_t * attributes, uint32_t valueInteger, 
-                             uint8_t valueDecimal, bool isPositive) {
-  char valueText[20] = {0};
+int sendNumericData(const HA_Attributes_t * attributes, uint32_t valueInteger, 
+                             uint8_t valueDecimal, bool isPositive)
+{
+  char valueText[512] = {0};
   const char * sign = isPositive ? "" : "-";
   switch (attributes->decimalPlaces) {
     case 0:
@@ -209,18 +365,20 @@ void sendNumericData(const HA_Attributes_t * attributes, uint32_t valueInteger,
       sprintf(valueText,"%s%" PRIu32 ".%02u", sign, valueInteger, valueDecimal);
       break;
   }
-  http_POST_Home_Assistant(attributes, valueText);
+  return http_POST_Home_Assistant(attributes, valueText);
 }
 
 // Send a text string: must have quotation marks added
-void sendTextData(const HA_Attributes_t * attributes, const char * valueText) {
-  char quotedText[20] = {0};
+int sendTextData(const HA_Attributes_t * attributes, const char * valueText)
+{
+  char quotedText[512] = {0};
   sprintf(quotedText,"\"%s\"", valueText);
-  http_POST_Home_Assistant(attributes, quotedText);
+  return http_POST_Home_Assistant(attributes, quotedText);
 }
 
 // Send the data to Home Assistant as an HTTP POST request.
-void http_POST_Home_Assistant(const HA_Attributes_t * attributes, const char * valueText) {
+int http_POST_Home_Assistant(const HA_Attributes_t * attributes, const char * valueText)
+{
   int ret;
 
   client.stop();
@@ -260,17 +418,21 @@ void http_POST_Home_Assistant(const HA_Attributes_t * attributes, const char * v
     // Handle expected entity update codes and dump anything else.
     String responseCode = client.readStringUntil('\n');
     if (responseCode.startsWith("HTTP/1.1 2")) {
-      if (responseCode.startsWith("HTTP/1.1 200")) {
-        Serial.print("Updated state of ");
+      if (responseCode.startsWith("HTTP/1.1 200") ||
+          responseCode.startsWith("HTTP/1.1 201")) {
+        
+        if (responseCode.startsWith("HTTP/1.1 200")) Serial.print("Updated state of ");
+        if (responseCode.startsWith("HTTP/1.1 201")) Serial.println("Created new entity for ");
         Serial.println(attributes->name);
-        return;
-      } else if (responseCode.startsWith("HTTP/1.1 201")) {
-        Serial.println("Created new entity for ");
-        Serial.println(attributes->name);
-        return;
+
+        // Drain response.
+        while (client.available()) {
+          client.read();
+        }
+        return 0;
       }
 
-      Serial.println("Undocumented successful response:");
+      Serial.println("Undocumented successful response: ");
     } else {
       Serial.println("Error response: ");
     }
@@ -279,13 +441,17 @@ void http_POST_Home_Assistant(const HA_Attributes_t * attributes, const char * v
     while (client.available()) {
       Serial.write(client.read());
     }
+
+    return 1;
   }
   else {
     Serial.printf("Client connection failed: %d\n", ret);
+    return ret;
   }
 }
 
-void connectToWiFi() {
+void connectToWiFi()
+{
   int status = WiFi.status();
   if (status == WL_CONNECTED) return;
 
@@ -314,7 +480,8 @@ void connectToWiFi() {
   digitalWrite(LED_BUILTIN, LOW);
 }
 
-void printWiFiStatus() {
+void printWiFiStatus()
+{
   // print the SSID of the network you're attached to:
   Serial.print("SSID: ");
   Serial.println(WiFi.SSID());
