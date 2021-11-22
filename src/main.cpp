@@ -44,30 +44,19 @@ enum DisplayTab {
   SCD40,
 };
 
-char postBuffer[2048] = {};
-char fieldBuffer[1024] = {};
-
-AirData_t airData = {};
-AirQualityData_t airQualityData = {};
-LightData_t lightData = {}; 
-ParticleData_t particleData = {};
-SoundData_t soundData = {};
-
-long lastSCD40;
+long lastSCD4X;
 long lastMetriful;
 
 Bounce2::Button connectivityButton;
 Bounce2::Button metrifulButton;
-Bounce2::Button scd40Button;
-
-DisplayTab tab = Connectivity;
+Bounce2::Button scd4XButton;
 
 int sendNumericData(const HA_Attributes_t *, uint32_t, uint8_t, bool);
 int sendTextData(const HA_Attributes_t *, const char *);
 int http_POST_Home_Assistant(const HA_Attributes_t *, const char *);
 void printWiFiStatus();
 void connectToWiFi();
-void updateSCD40();
+void updateSCD4X();
 void updateMetriful();
 void updateDisplay();
 
@@ -84,19 +73,37 @@ void setup()
   metrifulButton.attach(A2, INPUT_PULLUP);
   metrifulButton.setPressedState(LOW);
 
-  scd40Button.attach(A3, INPUT_PULLUP);
-  scd40Button.setPressedState(LOW);
+  scd4XButton.attach(A3, INPUT_PULLUP);
+  scd4XButton.setPressedState(LOW);
 
   // Initialize the host pins, set up the serial port and reset:
   SensorHardwareSetup(I2C_ADDRESS); 
 
+  display = Adafruit_SSD1306(128, 32, &Wire);
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.clearDisplay();
+  display.setCursor(2, 0);
+  display.print("Waiting for serial");
+  display.display();
+
+  long start = millis();
   pinMode(LED_BUILTIN, OUTPUT);
   while (!Serial) {
     delay(100);
     digitalWrite(LED_BUILTIN, HIGH);
     delay(100);
     digitalWrite(LED_BUILTIN, LOW);
+
+    // Give up waiting for serial after 10 seconds.
+    if (millis() - start > 10000) break;
   }
+
+  display.clearDisplay();
+  display.setCursor(2, 0);
+  display.print("Starting up");
+  display.display();
 
   Serial.println("Reporting environment data for " SENSOR_NAME);
 
@@ -114,6 +121,14 @@ void setup()
 
   scd4x.begin(Wire);
 
+  // Stop potentially previously started measurement.
+  error = scd4x.stopPeriodicMeasurement();
+  if (error) {
+      Serial.print("stopPeriodicMeasurement() failed: ");
+      errorToString(error, errorMessage, 256);
+      Serial.println(errorMessage);
+  }
+
   uint16_t serial0;
   uint16_t serial1;
   uint16_t serial2;
@@ -126,14 +141,6 @@ void setup()
     Serial.printf("SCD4x serial number: 0x%04x%04x%04x\r\n", serial0, serial1, serial2);
   }
 
-  // stop potentially previously started measurement
-  error = scd4x.stopPeriodicMeasurement();
-  if (error) {
-      Serial.print("stopPeriodicMeasurement() failed: ");
-      errorToString(error, errorMessage, 256);
-      Serial.println(errorMessage);
-  }
-
   // Start Measurement
   error = scd4x.startPeriodicMeasurement();
   if (error) {
@@ -141,12 +148,6 @@ void setup()
       errorToString(error, errorMessage, 256);
       Serial.println(errorMessage);
   }
-
-  display = Adafruit_SSD1306(128, 32, &Wire);
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.clearDisplay();
 }
 
 void loop()
@@ -154,18 +155,22 @@ void loop()
   // Ensure WiFi is still connected.
   connectToWiFi();
 
-  updateSCD40();
+  updateSCD4X();
   updateMetriful();
   updateDisplay();
+
+  // Run TinyUSB tasks.
+  yield();
 }
 
-void updateSCD40()
+void updateSCD4X()
 {
   static long lastUpdate = millis();
   char errorMessage[256];
   uint16_t dataReady;
   int ret;
 
+  // Don't pester the SCD4X too often.
   long now = millis();
   if (max(now, lastUpdate) - min(now, lastUpdate) < 10) return;
 
@@ -188,7 +193,7 @@ void updateSCD40()
       Serial.printf("Failed to read SCD4x measurement: %s\r\n", errorMessage);
     } else {
       if (!sendNumericData(&CO2, co2, 0, true)) {
-        lastSCD40 = millis();
+        lastSCD4X = millis();
       }
     }
   }
@@ -198,7 +203,6 @@ void updateMetriful()
 {
   // Wait for the next Metriful data release.
   if (!ready_assertion_event) {
-    yield();
     return;
   }
   ready_assertion_event = false;
@@ -209,6 +213,11 @@ void updateMetriful()
   struct in the correct order so that each field within the struct receives
   the value of an environmental quantity (temperature, sound level, etc.)
   */ 
+  AirData_t airData = {};
+  AirQualityData_t airQualityData = {};
+  LightData_t lightData = {}; 
+  ParticleData_t particleData = {};
+  SoundData_t soundData = {};
   
   // Air data
   ReceiveI2C(I2C_ADDRESS, AIR_DATA_READ, (uint8_t *) &airData, AIR_DATA_BYTES);
@@ -264,21 +273,21 @@ void updateMetriful()
 
 void updateDisplay()
 {
+  static DisplayTab tab = Connectivity;
   static long lastUpdate = millis();
   static bool blank = false;
 
   connectivityButton.update();
   metrifulButton.update();
-  scd40Button.update();
-
-  DisplayTab previousTab = tab;
+  scd4XButton.update();
 
   // Use a placeholder value to check whether any button was pressed this update.
+  DisplayTab previousTab = tab;
   tab = None;
 
   if (connectivityButton.pressed()) tab = Connectivity;
   if (metrifulButton.pressed()) tab = Metriful;
-  if (scd40Button.pressed()) tab = SCD40;
+  if (scd4XButton.pressed()) tab = SCD40;
 
   if (tab == None) tab = previousTab;
   else if (tab != previousTab) {
@@ -337,11 +346,14 @@ void updateDisplay()
     display.println("CO2 updated");
 
     display.setCursor(2, 8);
-    display.println((now - lastSCD40) / 1000);
+    display.println((now - lastSCD4X) / 1000);
 
     display.setCursor(2, 16);
     display.print("secs ago");
     break;
+  default:
+    display.setCursor(2, 0);
+    display.printf("Unhandled tab %d", tab);
   }
 
   display.display();
@@ -379,13 +391,15 @@ int sendTextData(const HA_Attributes_t * attributes, const char * valueText)
 // Send the data to Home Assistant as an HTTP POST request.
 int http_POST_Home_Assistant(const HA_Attributes_t * attributes, const char * valueText)
 {
+  char postBuffer[2048] = {};
+  char fieldBuffer[1024] = {};
   int ret;
 
   client.stop();
   ret = client.connect(HOME_ASSISTANT_IP, 8123);
   if (ret == 1) {
     // Form the URL from the name but replace spaces with underscores
-    strcpy(fieldBuffer,attributes->name);
+    strncpy(fieldBuffer, attributes->name, sizeof(fieldBuffer));
     for (uint8_t i=0; i<strlen(fieldBuffer); i++) {
       if (fieldBuffer[i] == ' ') {
         fieldBuffer[i] = '_';
@@ -401,13 +415,14 @@ int http_POST_Home_Assistant(const HA_Attributes_t * attributes, const char * va
 
     // Assemble the JSON content string:
     sprintf(postBuffer, "{\"state\":%s,\"attributes\":{"
-                          "\"unique_id\":\"" SENSOR_NAME "\","
+                          "\"unique_id\":\"" SENSOR_NAME "_%s\","
                           "\"device_class\":\"%s\","
                           "\"unit_of_measurement\":\"%s\","
                           "\"friendly_name\":\"%s\","
                           "\"icon\":\"mdi:%s\"}"
                         "}",
                        valueText,
+                       fieldBuffer,
                        attributes->device_class, attributes->unit, attributes->name, attributes->icon);
     
     sprintf(fieldBuffer,"Content-Length: %u", strlen(postBuffer));  

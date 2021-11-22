@@ -1,14 +1,22 @@
-# Feather M0 WiFi Metriful & SCD40 CO2
+# Feather M0 WiFi Home Assistant Environment Monitoring
+
+This reports temperature, air pressure, humidity, illumination, sound level,
+and CO2 concentration to Home Assistant over WiFi.
 
 ## Hardware
 
+* [Adafruit Feather M0 WiFi](https://www.adafruit.com/product/3061)
+* [SCD40 CO2 sensor](https://www.adafruit.com/product/5187)
+* [Metriful MS430](https://www.metriful.com/ms430)
+
 ## Configuration
 
-Rename `settings.h_example` to `settings.h` and set its values as appropriate.
+Copy `settings.h_example` to `settings.h` and set its values as appropriate.
 
 ## License
 
-MIT, except portions of this code concerning the CO2 sensor are licensed as follows:
+MIT, except portions of this code concerning the CO2 sensor are licensed as
+follows:
 
 ```
 /*
