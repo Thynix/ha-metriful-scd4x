@@ -3,6 +3,8 @@
 This reports temperature, air pressure, humidity, illumination, sound level,
 and CO2 concentration to Home Assistant over WiFi.
 
+This repo is a [https://platformio.org/](PlatformIO) project.
+
 ## Hardware
 
 * [Adafruit Feather M0 WiFi](https://www.adafruit.com/product/3061)
@@ -11,7 +13,7 @@ and CO2 concentration to Home Assistant over WiFi.
 
 ## Configuration
 
-Copy `settings.h_example` to `settings.h` and set its values as appropriate.
+Copy `include/settings.h_example` to `include/settings.h` and set its values as appropriate.
 
 ## License
 
