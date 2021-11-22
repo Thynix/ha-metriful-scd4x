@@ -112,7 +112,7 @@ void loop() {
   ret = scd4x.getDataReadyStatus(dataReady);
   if (ret) {
     Serial.printf("Failed to check if SCD4x has data ready: %d\r\n", ret);
-  } else if (dataReady & 0x7ff) {
+  } else if ((dataReady & (1 << 11) - 1) != 0) {
     // Data is ready. From datasheet:
     // > If the least significant 11 bits of
     // > word[0] are 0 → data not ready 
