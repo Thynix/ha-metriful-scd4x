@@ -294,8 +294,8 @@ void updateDisplay()
     blank = false;
     Serial.printf("Display tab changed to %d\r\n", tab);
   } else {
-    // Active tab button was pressed this update. Blank screen.
-    blank = true;
+    // Active tab button was pressed this update. Toggle screen blank.
+    blank = !blank;
   }
 
   long now = millis();
