@@ -151,7 +151,7 @@
 
   #include <ESP8266WiFi.h>
   #define HAS_WIFI
-  #define ISR_ATTRIBUTE ICACHE_RAM_ATTR
+  #define ISR_ATTRIBUTE IRAM_ATTR
 
   #define SDA_PIN 4
   #define SCL_PIN 5
