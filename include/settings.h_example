@@ -35,6 +35,12 @@ const char *const password = "PUT WIFI PASSWORD HERE IN QUOTES"; // network pass
 //    PARTICLE_SENSOR_SDS011   for the Nova SDS011
 //    PARTICLE_SENSOR_OFF      if no sensor is connected
 
+#define DISPLAY DISPLAY_OFF
+// Define DISPLAY as:
+//    DISPLAY_128x64    for the Adafruit FeatherWing 128x64 OLED
+//    DISPLAY_128x32    for the Adafruit FeatherWing 128x32 OLED
+//    DISPLAY_OFF       if no display is connected
+
 // The I2C address of the MS430 board. 
 #define I2C_ADDRESS I2C_ADDR_7BIT_SB_OPEN
 // The default is I2C_ADDR_7BIT_SB_OPEN and must be changed to 

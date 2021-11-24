@@ -34,6 +34,10 @@
 #define SUBSCRIPT_2 "\u2082"
 #define OHM_SYMBOL "\u03A9"
 
+#define DISPLAY_OFF    1
+#define DISPLAY_128x64 2
+#define DISPLAY_128x32 3
+
 extern volatile bool ready_assertion_event; 
 
 ////////////////////////////////////////////////////////////////////////

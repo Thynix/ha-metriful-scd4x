@@ -22,9 +22,9 @@ HA_Attributes_t peakAmplitude =  {"Sound peak", "None", "mPa", "waveform", 2};
 HA_Attributes_t AQI =            {"Air Quality Index", "aqi", "", "thought-bubble-outline", 1};
 HA_Attributes_t AQ_assessment =  {"Air quality assessment", "None", "", "flower-tulip", 0};
 HA_Attributes_t CO2 =            {"CO2 concentration", "carbon_dioxide", "ppm", "molecule-co2", 0};
-#if (PARTICLE_SENSOR == PARTICLE_SENSOR_PPD42)
+#if PARTICLE_SENSOR == PARTICLE_SENSOR_PPD42
   HA_Attributes_t particulates = {"Particle concentration", "pm10", "ppL", "chart-bubble", 0};
-#else
+#elif PARTICLE_SENSOR == PARTICLE_SENSOR_SDS011
   HA_Attributes_t particulates = {"Particle concentration", "pm25", SDS011_UNIT_SYMBOL, "chart-bubble", 2};
 #endif
 #ifdef USE_FAHRENHEIT
@@ -35,7 +35,12 @@ HA_Attributes_t CO2 =            {"CO2 concentration", "carbon_dioxide", "ppm", 
 
 WiFiClient client;
 SensirionI2CScd4x scd4x;
+
+#if DISPLAY_FEATHER == DISPLAY_128x32
 Adafruit_SSD1306 display;
+#elif DISPLAY_FEATHER == DISPLAY_128x64
+Adafruit_SH1107 display = Adafruit_SH1107(64, 128, &Wire);
+#endif
 
 enum DisplayTab {
   None,
@@ -58,38 +63,75 @@ void printWiFiStatus();
 void connectToWiFi();
 void updateSCD4X();
 void updateMetriful();
+#if DISPLAY_FEATHER != DISPLAY_OFF
 void updateDisplay();
+#endif
+
+#if DISPLAY_FEATHER != DISPLAY_OFF
+// Feather button pin definitions via
+// https://learn.adafruit.com/adafruit-128x64-oled-featherwing/arduino-code#run-example-code-3071194-10
+#if defined(ESP8266)
+  const uint8_t BUTTON_A =  0;
+  const uint8_t BUTTON_B = 16;
+  const uint8_t BUTTON_C =  2;
+#elif defined(ESP32) && !defined(ARDUINO_ADAFRUIT_FEATHER_ESP32S2)
+  const uint8_t BUTTON_A = 15;
+  const uint8_t BUTTON_B = 32;
+  const uint8_t BUTTON_C = 14;
+#elif defined(ARDUINO_STM32_FEATHER)
+  const uint8_t BUTTON_A = PA15;
+  const uint8_t BUTTON_B = PC7;
+  const uint8_t BUTTON_C = PC5;
+#elif defined(TEENSYDUINO)
+  const uint8_t BUTTON_A =  4;
+  const uint8_t BUTTON_B =  3;
+  const uint8_t BUTTON_C =  8;
+#elif defined(ARDUINO_NRF52832_FEATHER)
+  const uint8_t BUTTON_A = 31;
+  const uint8_t BUTTON_B = 30;
+  const uint8_t BUTTON_C = 27;
+#else // 32u4, M0, M4, nrf52840, esp32-s2 and 328p
+  const uint8_t BUTTON_A =  9;
+  const uint8_t BUTTON_B =  6;
+  const uint8_t BUTTON_C =  5;
+#endif
+#endif
 
 void setup()
 {
-#ifndef ESP8266
+#ifdef M0WiFi // TODO: Is there already a flag for this?
   // Configure pins for Adafruit ATWINC1500 Feather
   WiFi.setPins(8, 7, 4, 2);
 #endif
 
-  connectivityButton.attach(A1, INPUT_PULLUP);
+#if DISPLAY_FEATHER != DISPLAY_OFF
+  connectivityButton.attach(BUTTON_A, INPUT_PULLUP);
   connectivityButton.setPressedState(LOW);
 
-  metrifulButton.attach(A2, INPUT_PULLUP);
+  metrifulButton.attach(BUTTON_B, INPUT_PULLUP);
   metrifulButton.setPressedState(LOW);
 
-  scd4XButton.attach(A3, INPUT_PULLUP);
+  scd4XButton.attach(BUTTON_C, INPUT_PULLUP);
   scd4XButton.setPressedState(LOW);
+#endif
 
   // Initialize the host pins, set up the serial port and reset:
   SensorHardwareSetup(I2C_ADDRESS); 
 
+#if DISPLAY_FEATHER != DISPLAY_OFF
+#if DISPLAY_FEATHER == DISPLAY_128x32
   display = Adafruit_SSD1306(128, 32, &Wire);
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+#endif
+  display.begin();
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
   display.clearDisplay();
   display.setCursor(2, 0);
   display.print("Waiting for serial");
   display.display();
+#endif
 
   long start = millis();
-  pinMode(LED_BUILTIN, OUTPUT);
   while (!Serial) {
     delay(100);
     digitalWrite(LED_BUILTIN, HIGH);
@@ -100,10 +142,12 @@ void setup()
     if (millis() - start > 10000) break;
   }
 
+#if DISPLAY_FEATHER != DISPLAY_OFF
   display.clearDisplay();
   display.setCursor(2, 0);
   display.print("Starting up");
   display.display();
+#endif
 
   Serial.println("Reporting environment data for " SENSOR_NAME);
 
@@ -157,7 +201,9 @@ void loop()
 
   updateSCD4X();
   updateMetriful();
+#if DISPLAY_FEATHER != DISPLAY_OFF
   updateDisplay();
+#endif
 
   // Run TinyUSB tasks.
   yield();
@@ -262,15 +308,16 @@ void updateMetriful()
   sendNumericData(&peakAmplitude, (uint32_t) soundData.peak_amp_mPa_int, 
                   soundData.peak_amp_mPa_fr_2dp, true);
   sendNumericData(&AQI, (uint32_t) airQualityData.AQI_int, airQualityData.AQI_fr_1dp, true);
-  if (PARTICLE_SENSOR != PARTICLE_SENSOR_OFF) {
+  sendTextData(&AQ_assessment, interpret_AQI_value(airQualityData.AQI_int));
+#if PARTICLE_SENSOR != PARTICLE_SENSOR_OFF
     sendNumericData(&particulates, (uint32_t) particleData.concentration_int, 
                     particleData.concentration_fr_2dp, true);
-  }
-  sendTextData(&AQ_assessment, interpret_AQI_value(airQualityData.AQI_int));
+#endif
 
   lastMetriful = millis();
 }
 
+#if DISPLAY_FEATHER != DISPLAY_OFF
 void updateDisplay()
 {
   static DisplayTab tab = Connectivity;
@@ -327,7 +374,11 @@ void updateDisplay()
       display.print(IPAddress(WiFi.localIP()));
 
       display.setCursor(2, 24);
+      #ifndef ESP8266
       display.printf("%ld dBm", WiFi.RSSI());
+      #else
+      display.printf("%d dBm", WiFi.RSSI());
+      #endif
     }
     break;
   }
@@ -358,12 +409,13 @@ void updateDisplay()
 
   display.display();
 }
+#endif
 
 // Send numeric data with specified sign, integer and fractional parts
 int sendNumericData(const HA_Attributes_t * attributes, uint32_t valueInteger, 
                              uint8_t valueDecimal, bool isPositive)
 {
-  char valueText[512] = {0};
+  char valueText[64] = {0};
   const char * sign = isPositive ? "" : "-";
   switch (attributes->decimalPlaces) {
     case 0:
@@ -383,7 +435,7 @@ int sendNumericData(const HA_Attributes_t * attributes, uint32_t valueInteger,
 // Send a text string: must have quotation marks added
 int sendTextData(const HA_Attributes_t * attributes, const char * valueText)
 {
-  char quotedText[512] = {0};
+  char quotedText[64] = {0};
   sprintf(quotedText,"\"%s\"", valueText);
   return http_POST_Home_Assistant(attributes, quotedText);
 }
@@ -391,8 +443,8 @@ int sendTextData(const HA_Attributes_t * attributes, const char * valueText)
 // Send the data to Home Assistant as an HTTP POST request.
 int http_POST_Home_Assistant(const HA_Attributes_t * attributes, const char * valueText)
 {
-  char postBuffer[2048] = {};
-  char fieldBuffer[1024] = {};
+  char postBuffer[450] = {};
+  char fieldBuffer[70] = {};
   int ret;
 
   client.stop();
