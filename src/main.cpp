@@ -21,7 +21,9 @@ HA_Attributes_t soundLevel =     {"Sound level", "None", "dBA", "microphone", 1}
 HA_Attributes_t peakAmplitude =  {"Sound peak", "None", "mPa", "waveform", 2};
 HA_Attributes_t AQI =            {"Air Quality Index", "aqi", "", "thought-bubble-outline", 1};
 HA_Attributes_t AQ_assessment =  {"Air quality assessment", "None", "", "flower-tulip", 0};
+#if CO2_SENSOR != CO2_SENSOR_OFF
 HA_Attributes_t CO2 =            {"CO2 concentration", "carbon_dioxide", "ppm", "molecule-co2", 0};
+#endif
 #if PARTICLE_SENSOR == PARTICLE_SENSOR_PPD42
   HA_Attributes_t particulates = {"Particle concentration", "pm10", "ppL", "chart-bubble", 0};
 #elif PARTICLE_SENSOR == PARTICLE_SENSOR_SDS011
@@ -63,9 +65,7 @@ void printWiFiStatus();
 void connectToWiFi();
 void updateSCD4X();
 void updateMetriful();
-#if DISPLAY_FEATHER != DISPLAY_OFF
 void updateDisplay();
-#endif
 
 #if DISPLAY_FEATHER != DISPLAY_OFF
 // Feather button pin definitions via
@@ -199,7 +199,9 @@ void loop()
   // Ensure WiFi is still connected.
   connectToWiFi();
 
+#if CO2_SENSOR != CO2_SENSOR_OFF
   updateSCD4X();
+#endif
   updateMetriful();
 #if DISPLAY_FEATHER != DISPLAY_OFF
   updateDisplay();
@@ -209,6 +211,7 @@ void loop()
   yield();
 }
 
+#if CO2_SENSOR != CO2_SENSOR_OFF
 void updateSCD4X()
 {
   static long lastUpdate = millis();
@@ -244,6 +247,7 @@ void updateSCD4X()
     }
   }
 }
+#endif
 
 void updateMetriful()
 {
@@ -317,7 +321,7 @@ void updateMetriful()
   lastMetriful = millis();
 }
 
-#if DISPLAY_FEATHER != DISPLAY_OFF
+#if DISPLAY_FEATHER == DISPLAY_128x32
 void updateDisplay()
 {
   static DisplayTab tab = Connectivity;
