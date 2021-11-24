@@ -1,12 +1,16 @@
 #include <Arduino.h>
 #include <Metriful_sensor.h>
-#include <SensirionI2CScd4x.h>
 #include <Wire.h>
 #include <SPI.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <Bounce2.h>
 #include "settings.h"
+#if CO2_SENSOR == CO2_SENSOR_SCD4x
+#include <SensirionI2CScd4x.h>
+#elif CO2_SENSOR == CO2_SENSOR_SCD30
+#include <Adafruit_SCD30.h>
+#endif
 
 // Define the display attributes of data sent to Home Assistant. 
 // The chosen name, unit and icon will appear in on the overview 
@@ -36,7 +40,12 @@ HA_Attributes_t CO2 =            {"CO2 concentration", "carbon_dioxide", "ppm", 
 #endif
 
 WiFiClient client;
+
+#if CO2_SENSOR == CO2_SENSOR_SCD4x
 SensirionI2CScd4x scd4x;
+#elif CO2_SENSOR == CO2_SENSOR_SCD30
+Adafruit_SCD30 scd30;
+#endif
 
 #if DISPLAY_FEATHER == DISPLAY_128x32
 Adafruit_SSD1306 display;
@@ -51,7 +60,7 @@ enum DisplayTab {
   SCD40,
 };
 
-long lastSCD4X;
+long lastCO2;
 long lastMetriful;
 
 Bounce2::Button connectivityButton;
@@ -63,7 +72,7 @@ int sendTextData(const HA_Attributes_t *, const char *);
 int http_POST_Home_Assistant(const HA_Attributes_t *, const char *);
 void printWiFiStatus();
 void connectToWiFi();
-void updateSCD4X();
+void updateCO2();
 void updateMetriful();
 void updateDisplay();
 
@@ -160,6 +169,7 @@ void setup()
   ready_assertion_event = false;
   TransmitI2C(I2C_ADDRESS, CYCLE_MODE_CMD, 0, 0);
 
+#if CO2_SENSOR == CO2_SENSOR_SCD4x
   uint16_t error;
   char errorMessage[256];
 
@@ -192,6 +202,15 @@ void setup()
       errorToString(error, errorMessage, 256);
       Serial.println(errorMessage);
   }
+
+  scd.setAutomaticSelfCalibration(false);
+#elif CO2_SENSOR == CO2_SENSOR_SCD30
+  while (!scd30.begin()) delay(10);
+  scd30.selfCalibrationEnabled(false);
+
+  // Match SCD4x's periodic measurement of 5 seconds.
+  scd30.setMeasurementInterval(5);
+#endif
 }
 
 void loop()
@@ -199,27 +218,23 @@ void loop()
   // Ensure WiFi is still connected.
   connectToWiFi();
 
-#if CO2_SENSOR != CO2_SENSOR_OFF
-  updateSCD4X();
-#endif
+  updateCO2();
   updateMetriful();
-#if DISPLAY_FEATHER != DISPLAY_OFF
   updateDisplay();
-#endif
 
   // Run TinyUSB tasks.
   yield();
 }
 
-#if CO2_SENSOR != CO2_SENSOR_OFF
-void updateSCD4X()
+void updateCO2()
 {
+#if CO2_SENSOR == CO2_SENSOR_SCD4x
   static long lastUpdate = millis();
   char errorMessage[256];
   uint16_t dataReady;
   int ret;
 
-  // Don't pester the SCD4X too often.
+  // Don't poll the SCD4x too often.
   long now = millis();
   if (max(now, lastUpdate) - min(now, lastUpdate) < 10) return;
 
@@ -242,12 +257,22 @@ void updateSCD4X()
       Serial.printf("Failed to read SCD4x measurement: %s\r\n", errorMessage);
     } else {
       if (!sendNumericData(&CO2, co2, 0, true)) {
-        lastSCD4X = millis();
+        lastCO2 = millis();
       }
     }
   }
-}
+#elif CO2_SENSOR == CO2_SENSOR_SCD30
+  if (scd30.dataReady()) {
+    if (scd30.read()) {
+      if (!sendNumericData(&CO2, scd30.CO2, 0, true)) {
+        lastCO2 = millis();
+      }
+    } else {
+      Serial.println("Error reading CO2 sensor data");
+    }
+  }
 #endif
+}
 
 void updateMetriful()
 {
@@ -299,9 +324,11 @@ void updateMetriful()
   uint8_t T_fractionalPart = 0;
   bool isPositive = true;
   getTemperature(&airData, &T_intPart, &T_fractionalPart, &isPositive);
-  
+
+#if CO2_SENSOR == CO2_SENSOR_SCD4x
   // Update pressure used by SCD4x.
   scd4x.setAmbientPressure(roundf(airData.P_Pa / 100.0));
+#endif
 
   // Send data to Home Assistant
   sendNumericData(&temperature, (uint32_t) T_intPart, T_fractionalPart, isPositive);
@@ -321,9 +348,9 @@ void updateMetriful()
   lastMetriful = millis();
 }
 
-#if DISPLAY_FEATHER == DISPLAY_128x32
 void updateDisplay()
 {
+#if DISPLAY_FEATHER == DISPLAY_128x32
   static DisplayTab tab = Connectivity;
   static long lastUpdate = millis();
   static bool blank = false;
@@ -401,7 +428,7 @@ void updateDisplay()
     display.println("CO2 updated");
 
     display.setCursor(2, 8);
-    display.println((now - lastSCD4X) / 1000);
+    display.println((now - lastCO2) / 1000);
 
     display.setCursor(2, 16);
     display.print("secs ago");
@@ -412,8 +439,8 @@ void updateDisplay()
   }
 
   display.display();
-}
 #endif
+}
 
 // Send numeric data with specified sign, integer and fractional parts
 int sendNumericData(const HA_Attributes_t * attributes, uint32_t valueInteger, 
@@ -493,7 +520,7 @@ int http_POST_Home_Assistant(const HA_Attributes_t * attributes, const char * va
           responseCode.startsWith("HTTP/1.1 201")) {
         
         if (responseCode.startsWith("HTTP/1.1 200")) Serial.print("Updated state of ");
-        if (responseCode.startsWith("HTTP/1.1 201")) Serial.println("Created new entity for ");
+        if (responseCode.startsWith("HTTP/1.1 201")) Serial.print("Created new entity for ");
         Serial.println(attributes->name);
 
         // Drain response.

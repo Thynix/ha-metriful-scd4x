@@ -127,6 +127,10 @@ static const uint16_t sound_band_edges_Hz[SOUND_FREQ_BANDS+1] = {88, 177, 354, 7
 #define PARTICLE_SENSOR_PPD42  1
 #define PARTICLE_SENSOR_SDS011 2
 
+#define CO2_SENSOR_OFF   0
+#define CO2_SENSOR_SCD30 1
+#define CO2_SENSOR_SCD4x 2
+
 ///////////////////////////////////////////////////////////
 
 // Structs for accessing individual data quantities after reading a category of data
