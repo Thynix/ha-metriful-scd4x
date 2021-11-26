@@ -124,22 +124,8 @@ void setup()
   scd4XButton.setPressedState(LOW);
 #endif
 
-  // Initialize the host pins, set up the serial port and reset:
-  SensorHardwareSetup(I2C_ADDRESS); 
-
-#if DISPLAY_FEATHER != DISPLAY_OFF
-#if DISPLAY_FEATHER == DISPLAY_128x32
-  display = Adafruit_SSD1306(128, 32, &Wire);
-#endif
-  display.begin();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.clearDisplay();
-  display.setCursor(2, 0);
-  display.print("Waiting for serial");
-  display.display();
-#endif
-
+  pinMode(LED_BUILTIN, OUTPUT);
+  Serial.begin(SERIAL_BAUD_RATE);
   long start = millis();
   while (!Serial) {
     delay(100);
@@ -151,12 +137,23 @@ void setup()
     if (millis() - start > 10000) break;
   }
 
+  Serial.println("Starting up");
+
 #if DISPLAY_FEATHER != DISPLAY_OFF
+#if DISPLAY_FEATHER == DISPLAY_128x32
+  display = Adafruit_SSD1306(128, 32, &Wire);
+#endif
+  display.begin();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
   display.clearDisplay();
   display.setCursor(2, 0);
   display.print("Starting up");
   display.display();
 #endif
+
+  // Initialize the host pins, set up the serial port and reset:
+  SensorHardwareSetup(I2C_ADDRESS); 
 
   Serial.println("Reporting environment data for " SENSOR_NAME);
 
@@ -203,7 +200,7 @@ void setup()
       Serial.println(errorMessage);
   }
 
-  scd.setAutomaticSelfCalibration(false);
+  scd4x.setAutomaticSelfCalibration(false);
 #elif CO2_SENSOR == CO2_SENSOR_SCD30
   while (!scd30.begin()) delay(10);
   scd30.selfCalibrationEnabled(false);
@@ -218,6 +215,7 @@ void loop()
   // Ensure WiFi is still connected.
   connectToWiFi();
 
+  // TODO: break each function into its own module
   updateCO2();
   updateMetriful();
   updateDisplay();
