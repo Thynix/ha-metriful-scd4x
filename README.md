@@ -8,7 +8,7 @@ This repo is a [PlatformIO](https://platformio.org/) project.
 ## Hardware
 
 * [Adafruit Feather M0 WiFi](https://www.adafruit.com/product/3061)
-* [SCD40 CO2 sensor](https://www.adafruit.com/product/5187)
+* [SCD40 CO2 sensor](https://www.adafruit.com/product/5187) or [SCD30 CO2 sensor](https://www.adafruit.com/product/4867)
 * [Metriful MS430](https://www.metriful.com/ms430)
 
 ## Configuration

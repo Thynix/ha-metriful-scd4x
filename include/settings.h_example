@@ -14,7 +14,7 @@ const char *const password = "PUT WIFI PASSWORD HERE IN QUOTES"; // network pass
 // network. Go to www.home-assistant.io for help on this.
 
 // Choose a unique name for this MS430 sensor board so you can identify it.
-// Variables in HA will have names like: SENSOR_NAME.temperature, etc.
+// Variables in HA will have names like: sensor.SENSOR_NAME_temperature, etc.
 #define SENSOR_NAME "kitchen3"
 
 // Change this to the IP address of the computer running Home Assistant. 
@@ -34,6 +34,13 @@ const char *const password = "PUT WIFI PASSWORD HERE IN QUOTES"; // network pass
 //    PARTICLE_SENSOR_PPD42    for the Shinyei PPD42
 //    PARTICLE_SENSOR_SDS011   for the Nova SDS011
 //    PARTICLE_SENSOR_OFF      if no sensor is connected
+
+// Specify which CO2 sensor is connected:
+#define CO2_SENSOR CO2_SENSOR_OFF
+// Define CO2_SENSOR as:
+//    CO2_SENSOR_SCD30    for the Sensirion SCD30 sensor
+//    CO2_SENSOR_SCD4x    for a Sensirion SCD4x sensor
+//    CO2_SENSOR_OFF      if no sensor is connected
 
 // Specify which OLED display Featherwing is connected:
 #define DISPLAY DISPLAY_OFF
