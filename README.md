@@ -1,4 +1,4 @@
-# Feather M0 WiFi Home Assistant Environment Monitoring
+# Home Assistant Environment Monitoring
 
 This reports temperature, air pressure, humidity, illumination, sound level,
 and CO2 concentration to Home Assistant over WiFi.
@@ -7,9 +7,18 @@ This repo is a [PlatformIO](https://platformio.org/) project.
 
 ## Hardware
 
-* [Adafruit Feather M0 WiFi](https://www.adafruit.com/product/3061)
-* [SCD40 CO2 sensor](https://www.adafruit.com/product/5187) or [SCD30 CO2 sensor](https://www.adafruit.com/product/4867)
+Requires:
+
 * [Metriful MS430](https://www.metriful.com/ms430)
+
+Known to work with these boards:
+
+* [Adafruit Feather M0 WiFi](https://www.adafruit.com/product/3061) or [Adafruit Feather HUZZAH with ESP8266](https://www.adafruit.com/product/2821)
+
+Optional:
+
+* [SCD40 CO2 sensor](https://www.adafruit.com/product/5187) or [SCD30 CO2 sensor](https://www.adafruit.com/product/4867)
+* [Adafruit FeatherWing OLED - 128x32 OLED Add-on For Feather](https://www.adafruit.com/product/2900)
 
 ## Configuration
 
