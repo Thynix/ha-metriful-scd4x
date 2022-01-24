@@ -2,9 +2,6 @@
 
 #pragma once
 
-//////////////////////////////////////////////////////////
-// USER-EDITABLE SETTINGS
-
 // How often to read and report the data (every 3, 100 or 300 seconds)
 const uint8_t cycle_period = CYCLE_PERIOD_100_S;
 
@@ -57,6 +54,3 @@ const char *const password = "PUT WIFI PASSWORD HERE IN QUOTES"; // network pass
 // The default is I2C_ADDR_7BIT_SB_OPEN and must be changed to
 // I2C_ADDR_7BIT_SB_CLOSED if the solder bridge SB1 on the board
 // is soldered closed
-
-// END OF USER-EDITABLE SETTINGS
-//////////////////////////////////////////////////////////
