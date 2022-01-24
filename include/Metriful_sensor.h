@@ -1,13 +1,13 @@
-/* 
+/*
    Metriful_sensor.h
 
-   This file declares functions and settings which are used in the code 
+   This file declares functions and settings which are used in the code
    examples. The function definitions are in file Metriful_sensor.cpp
 
-   Copyright 2020 Metriful Ltd. 
+   Copyright 2020 Metriful Ltd.
    Licensed under the MIT License - for further details see LICENSE.txt
 
-   For code examples, datasheet and user guide, visit 
+   For code examples, datasheet and user guide, visit
    https://github.com/metriful/sensor
 */
 
@@ -38,12 +38,12 @@
 #define DISPLAY_128x64 2
 #define DISPLAY_128x32 3
 
-extern volatile bool ready_assertion_event; 
+extern volatile bool ready_assertion_event;
 
 ////////////////////////////////////////////////////////////////////////
 
-// Data category structs containing floats. If floats are not wanted, 
-// use the integer-only struct versions in sensor_constants.h 
+// Data category structs containing floats. If floats are not wanted,
+// use the integer-only struct versions in sensor_constants.h
 
 typedef struct {
   float SPL_dBA;
@@ -91,7 +91,7 @@ typedef struct {
   const char * variableName;
   const char * measurementUnit;
   int32_t thresHigh;
-  int32_t thresLow;  
+  int32_t thresLow;
   uint16_t inactiveCount;
   const char * adviceHigh;
   const char * adviceLow;
@@ -118,7 +118,7 @@ const char * interpret_AQI_accuracy(uint8_t AQI_accuracy_code);
 const char * interpret_AQI_value(uint16_t AQI);
 
 void convertAirDataF(const AirData_t * airData_in, AirData_F_t * airDataF_out);
-void convertAirQualityDataF(const AirQualityData_t * airQualityData_in, 
+void convertAirQualityDataF(const AirQualityData_t * airQualityData_in,
                             AirQualityData_F_t * airQualityDataF_out);
 void convertLightDataF(const LightData_t * lightData_in, LightData_F_t * lightDataF_out);
 void convertSoundDataF(const SoundData_t * soundData_in, SoundData_F_t * soundDataF_out);
@@ -154,6 +154,6 @@ ParticleData_F_t getParticleDataF(uint8_t i2c_7bit_address);
 float convertCtoF(float C);
 void convertCtoF_int(float C, uint8_t * F_int, uint8_t * F_fr_1dp, bool * isPositive);
 float convertEncodedTemperatureToFloat(uint8_t T_C_int_with_sign, uint8_t T_C_fr_1dp);
-const char * getTemperature(const AirData_t * pAirData, uint8_t * T_intPart, 
+const char * getTemperature(const AirData_t * pAirData, uint8_t * T_intPart,
                     uint8_t * T_fractionalPart, bool * isPositive);
 #endif

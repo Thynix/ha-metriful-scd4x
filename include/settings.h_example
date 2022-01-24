@@ -1,3 +1,7 @@
+#include <Metriful_sensor.h>
+
+#pragma once
+
 //////////////////////////////////////////////////////////
 // USER-EDITABLE SETTINGS
 
@@ -10,14 +14,14 @@ const char *const password = "PUT WIFI PASSWORD HERE IN QUOTES"; // network pass
 
 // Home Assistant settings
 
-// You must have already installed Home Assistant on a computer on your 
+// You must have already installed Home Assistant on a computer on your
 // network. Go to www.home-assistant.io for help on this.
 
 // Choose a unique name for this MS430 sensor board so you can identify it.
 // Variables in HA will have names like: sensor.SENSOR_NAME_temperature, etc.
 #define SENSOR_NAME "kitchen3"
 
-// Change this to the IP address of the computer running Home Assistant. 
+// Change this to the IP address of the computer running Home Assistant.
 // You can find this from the admin interface of your router.
 #define HOME_ASSISTANT_IP "192.168.43.144"
 
@@ -48,10 +52,10 @@ const char *const password = "PUT WIFI PASSWORD HERE IN QUOTES"; // network pass
 //    DISPLAY_128x32    for the Adafruit FeatherWing 128x32 OLED
 //    DISPLAY_OFF       if no display is connected
 
-// The I2C address of the MS430 board. 
+// The I2C address of the MS430 board.
 #define I2C_ADDRESS I2C_ADDR_7BIT_SB_OPEN
-// The default is I2C_ADDR_7BIT_SB_OPEN and must be changed to 
-// I2C_ADDR_7BIT_SB_CLOSED if the solder bridge SB1 on the board 
+// The default is I2C_ADDR_7BIT_SB_OPEN and must be changed to
+// I2C_ADDR_7BIT_SB_CLOSED if the solder bridge SB1 on the board
 // is soldered closed
 
 // END OF USER-EDITABLE SETTINGS
