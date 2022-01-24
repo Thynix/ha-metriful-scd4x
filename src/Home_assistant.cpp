@@ -61,13 +61,14 @@ int http_POST_Home_Assistant(const HA_Attributes_t * attributes, const char * va
     sprintf(postBuffer, "{\"state\":%s,\"attributes\":{"
                           "\"unique_id\":\"" SENSOR_NAME "_%s\","
                           "\"device_class\":\"%s\","
+                          "\"state_class\":\"%s\","
                           "\"unit_of_measurement\":\"%s\","
                           "\"friendly_name\":\"%s\","
                           "\"icon\":\"mdi:%s\"}"
                         "}",
                        valueText,
                        fieldBuffer,
-                       attributes->device_class, attributes->unit, attributes->name, attributes->icon);
+                       attributes->device_class, attributes->state_class, attributes->unit, attributes->name, attributes->icon);
 
     sprintf(fieldBuffer,"Content-Length: %u", strlen(postBuffer));
     client.println(fieldBuffer);
