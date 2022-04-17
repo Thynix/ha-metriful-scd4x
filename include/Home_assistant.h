@@ -6,7 +6,7 @@
 // dashboard in Home Assistant. The icons can be chosen from
 // https://cdn.materialdesignicons.com/5.3.45/
 // (remove the "mdi-" part from the icon name).
-// The attribute fields are: {name, device_class, state_class, unit, icon, decimal places}
+// The attribute fields are: {name, state_class, device_class, unit, icon, decimal places}
 const HA_Attributes_t pressure =       {"Pressure", "measurement", "pressure", "hPa", "weather-cloudy", 1};
 const HA_Attributes_t humidity =       {"Humidity", "measurement", "humidity", "%", "water-percent", 1};
 const HA_Attributes_t illuminance =    {"Illuminance", "measurement", "illuminance", "lx", "white-balance-sunny", 2};
